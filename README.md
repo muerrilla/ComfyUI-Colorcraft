@@ -33,18 +33,21 @@ And since it's just simple vector math, **it's computationally close to free!**
 
 ## Why not just do it in post?
 
-<details>
-<summary>Click if you're wondering</summary>
-
 Most color tools work on finished images after the fact: a curve, a LUT, a filter laid over pixels that are already locked in. Colorcraft reaches into the latent while the image is still being formed, and shapes color the same way the model itself does, along real, meaningful axes of the space it thinks in, rather than the red/green/blue channels of a decoded image.
 
 It's the difference between metering a shot correctly at capture versus fixing the exposure in post, or mixing the right color on the palette versus color-correcting a finished painting. Latents carry far more dynamic range than a decoded image, so there's real headroom to work with: proper HDR-range color, not a clipped approximation of it.
 
+<p align="center">
+<a href="assets/dynamic-range.jpg"><img src="assets/dynamic-range.jpg" width="720" alt="Sample showing the high dynamic range property"></a>
+<br><sub>High Dynamic Range: Middle is the original — note the lamps and the shutters (Click to view full size)</sub>
+</p>
 And because the edit happens while the image is still forming, it doesn't just recolor the result: it can steer the generation itself (e.g. making darker, brighter, or more colorful compositions than the model would produce on its own). You can even push or pull fine detail and texture directly, something no post-process filter can genuinely add back once it's gone.
-
+<br><br>
+<p align="center">
+<a href="assets/steering.jpg"><img src="assets/steering.jpg" width="720" alt="Sample showing the steering property"></a>
+<br><sub>Steering: Top-left is the original, the rest use same prompt/seed with different edits applied at early steps (Click to view full size)</sub>
+</p>
 Oh, and also, you won't need a second software or process. You do it all in one go.
-
-</details>
 
 ## Nodes
 
