@@ -2,7 +2,7 @@
 
 # COLORCRAFT
 
-### Color grading for ComfyUI, applied where it actually matters: inside the diffusion process itself!
+### Color grading for ComfyUI and Forge Neo, applied where it actually matters: inside the diffusion process itself!
 
 <!-- TODO: hero image -->
 <!-- <img src="assets/hero.png" alt="Colorcraft hero" width="800"> -->
@@ -116,7 +116,7 @@ Oh, and also, you won't need a second software or process. You do it all in one 
 ## Requirements
 
 - [ComfyUI](https://comfy.org/) / [SD Webui Forge Neo](https://github.com/Haoming02/sd-webui-forge-classic/tree/neo)
-- **Basic** node (Contrast slider and Color Shift sliders in Neo) should work with any model that has a VAE, no restrictions
+- **Basic** node (Contrast and Color Shift sliders in Neo) should work with any model that has a VAE, no restrictions
 - Every other node needs a matching basis for the model's VAE family. Currently supported:
   - **Qwen Image VAE Family** — **Krea2** / Qwen Image / Anima / ...
   - **Flux AE Family** — **Z-Image** / Flux / ...
