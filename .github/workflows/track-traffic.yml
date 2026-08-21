@@ -2,107 +2,100 @@ name: Track Traffic
 
 on:
   schedule:
-    - cron: "0 18 * * *"   # runs every day at 18:00 UTC (adjust to taste)
-  workflow_dispatch:         # lets you also trigger it manually from the Actions tab
+    - cron: "0 18 * * *"
+  workflow_dispatch:
 
 jobs:
   track:
     runs-on: ubuntu-latest
 
     steps:
-
-      # 1. Fetch all four traffic metrics
       - name: Fetch traffic and save to Gist
         env:
-          GH_TOKEN: ${{ secrets.TRAFFIC_TOKEN }}   # same PAT as before (needs gist scope — see note)
+          GH_TOKEN: ${{ secrets.TRAFFIC_TOKEN }}
           REPO: ${{ github.repository }}
-          GIST_ID: ${{ secrets.TRAFFIC_GIST_ID }}  # the ID of your private gist (see setup)
+          GIST_ID: ${{ secrets.TRAFFIC_GIST_ID }}
         run: |
           TODAY=$(date -u +%Y-%m-%d)
+          TODAY_TS=$(date -u +%Y-%m-%dT00:00:00Z)
 
-          # ── Clones ──────────────────────────────────────────────────────
           CLONES_JSON=$(curl -s \
             -H "Authorization: Bearer $GH_TOKEN" \
             -H "Accept: application/vnd.github+json" \
             "https://api.github.com/repos/$REPO/traffic/clones")
 
-          # ── Views ────────────────────────────────────────────────────────
           VIEWS_JSON=$(curl -s \
             -H "Authorization: Bearer $GH_TOKEN" \
             -H "Accept: application/vnd.github+json" \
             "https://api.github.com/repos/$REPO/traffic/views")
 
-          # ── Extract today's numbers ──────────────────────────────────────
-          CLONES=$(echo "$CLONES_JSON" | python3 -c "
-import json, sys
-data = json.load(sys.stdin)
-today = '$(date -u +%Y-%m-%dT00:00:00Z)'
-row = next((d for d in data.get('clones', []) if d['timestamp'] == today), {})
+          CLONES=$(python3 << PYEOF
+import json
+data = json.loads('''$CLONES_JSON''')
+row = next((d for d in data.get('clones', []) if d['timestamp'] == '$TODAY_TS'), {})
 print(row.get('count', 0))
-")
+PYEOF
+)
 
-          UNIQUE_CLONERS=$(echo "$CLONES_JSON" | python3 -c "
-import json, sys
-data = json.load(sys.stdin)
-today = '$(date -u +%Y-%m-%dT00:00:00Z)'
-row = next((d for d in data.get('clones', []) if d['timestamp'] == today), {})
+          UNIQUE_CLONERS=$(python3 << PYEOF
+import json
+data = json.loads('''$CLONES_JSON''')
+row = next((d for d in data.get('clones', []) if d['timestamp'] == '$TODAY_TS'), {})
 print(row.get('uniques', 0))
-")
+PYEOF
+)
 
-          VIEWS=$(echo "$VIEWS_JSON" | python3 -c "
-import json, sys
-data = json.load(sys.stdin)
-today = '$(date -u +%Y-%m-%dT00:00:00Z)'
-row = next((d for d in data.get('views', []) if d['timestamp'] == today), {})
+          VIEWS=$(python3 << PYEOF
+import json
+data = json.loads('''$VIEWS_JSON''')
+row = next((d for d in data.get('views', []) if d['timestamp'] == '$TODAY_TS'), {})
 print(row.get('count', 0))
-")
+PYEOF
+)
 
-          UNIQUE_VISITORS=$(echo "$VIEWS_JSON" | python3 -c "
-import json, sys
-data = json.load(sys.stdin)
-today = '$(date -u +%Y-%m-%dT00:00:00Z)'
-row = next((d for d in data.get('views', []) if d['timestamp'] == today), {})
+          UNIQUE_VISITORS=$(python3 << PYEOF
+import json
+data = json.loads('''$VIEWS_JSON''')
+row = next((d for d in data.get('views', []) if d['timestamp'] == '$TODAY_TS'), {})
 print(row.get('uniques', 0))
-")
+PYEOF
+)
 
           echo "Today: $TODAY | clones=$CLONES unique_cloners=$UNIQUE_CLONERS views=$VIEWS unique_visitors=$UNIQUE_VISITORS"
 
-          # ── Fetch current Gist content ───────────────────────────────────
           GIST_JSON=$(curl -s \
             -H "Authorization: Bearer $GH_TOKEN" \
             -H "Accept: application/vnd.github+json" \
             "https://api.github.com/gists/$GIST_ID")
 
-          # Get the filename of the first file in the gist
-          FILENAME=$(echo "$GIST_JSON" | python3 -c "
-import json, sys
-data = json.load(sys.stdin)
+          FILENAME=$(python3 << PYEOF
+import json
+data = json.loads('''$GIST_JSON''')
 print(list(data['files'].keys())[0])
-")
+PYEOF
+)
 
-          # Get current CSV content
-          CURRENT=$(echo "$GIST_JSON" | python3 -c "
-import json, sys
-data = json.load(sys.stdin)
+          CURRENT=$(python3 << PYEOF
+import json
+data = json.loads('''$GIST_JSON''')
 filename = list(data['files'].keys())[0]
 print(data['files'][filename]['content'])
-")
+PYEOF
+)
 
-          # ── Skip if today already recorded ───────────────────────────────
           if echo "$CURRENT" | grep -q "^$TODAY,"; then
             echo "Row for $TODAY already exists — skipping."
             exit 0
           fi
 
-          # ── Append new row and push back to Gist ─────────────────────────
-          NEW_CONTENT="${CURRENT}
-${TODAY},${CLONES},${UNIQUE_CLONERS},${VIEWS},${UNIQUE_VISITORS}"
+          NEW_CONTENT="$CURRENT
+$TODAY,$CLONES,$UNIQUE_CLONERS,$VIEWS,$UNIQUE_VISITORS"
 
-          # Escape content for JSON
-          ESCAPED=$(python3 -c "
-import json, sys
-print(json.dumps(sys.stdin.read()))
-" <<< "$NEW_CONTENT")
+          ESCAPED=$(python3 << PYEOF
+import json
+print(json.dumps("""$NEW_CONTENT"""))
+PYEOF
+)
 
           curl -s -X PATCH \
             -H "Authorization: Bearer $GH_TOKEN" \
