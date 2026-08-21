@@ -10,6 +10,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4.2.2
+
       - name: Fetch traffic and save to Gist
         env:
           GH_TOKEN: ${{ secrets.TRAFFIC_TOKEN }}
@@ -17,90 +20,21 @@ jobs:
           GIST_ID: ${{ secrets.TRAFFIC_GIST_ID }}
         run: |
           TODAY=$(date -u +%Y-%m-%d)
-          TODAY_TS=$(date -u +%Y-%m-%dT00:00:00Z)
+          TODAY_TS="${TODAY}T00:00:00Z"
 
-          CLONES_JSON=$(curl -s \
+          curl -s \
             -H "Authorization: Bearer $GH_TOKEN" \
             -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/$REPO/traffic/clones")
+            "https://api.github.com/repos/$REPO/traffic/clones" > /tmp/clones.json
 
-          VIEWS_JSON=$(curl -s \
+          curl -s \
             -H "Authorization: Bearer $GH_TOKEN" \
             -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/$REPO/traffic/views")
+            "https://api.github.com/repos/$REPO/traffic/views" > /tmp/views.json
 
-          CLONES=$(python3 << PYEOF
-import json
-data = json.loads('''$CLONES_JSON''')
-row = next((d for d in data.get('clones', []) if d['timestamp'] == '$TODAY_TS'), {})
-print(row.get('count', 0))
-PYEOF
-)
-
-          UNIQUE_CLONERS=$(python3 << PYEOF
-import json
-data = json.loads('''$CLONES_JSON''')
-row = next((d for d in data.get('clones', []) if d['timestamp'] == '$TODAY_TS'), {})
-print(row.get('uniques', 0))
-PYEOF
-)
-
-          VIEWS=$(python3 << PYEOF
-import json
-data = json.loads('''$VIEWS_JSON''')
-row = next((d for d in data.get('views', []) if d['timestamp'] == '$TODAY_TS'), {})
-print(row.get('count', 0))
-PYEOF
-)
-
-          UNIQUE_VISITORS=$(python3 << PYEOF
-import json
-data = json.loads('''$VIEWS_JSON''')
-row = next((d for d in data.get('views', []) if d['timestamp'] == '$TODAY_TS'), {})
-print(row.get('uniques', 0))
-PYEOF
-)
-
-          echo "Today: $TODAY | clones=$CLONES unique_cloners=$UNIQUE_CLONERS views=$VIEWS unique_visitors=$UNIQUE_VISITORS"
-
-          GIST_JSON=$(curl -s \
+          curl -s \
             -H "Authorization: Bearer $GH_TOKEN" \
             -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/gists/$GIST_ID")
+            "https://api.github.com/gists/$GIST_ID" > /tmp/gist.json
 
-          FILENAME=$(python3 << PYEOF
-import json
-data = json.loads('''$GIST_JSON''')
-print(list(data['files'].keys())[0])
-PYEOF
-)
-
-          CURRENT=$(python3 << PYEOF
-import json
-data = json.loads('''$GIST_JSON''')
-filename = list(data['files'].keys())[0]
-print(data['files'][filename]['content'])
-PYEOF
-)
-
-          if echo "$CURRENT" | grep -q "^$TODAY,"; then
-            echo "Row for $TODAY already exists — skipping."
-            exit 0
-          fi
-
-          NEW_CONTENT="$CURRENT
-$TODAY,$CLONES,$UNIQUE_CLONERS,$VIEWS,$UNIQUE_VISITORS"
-
-          ESCAPED=$(python3 << PYEOF
-import json
-print(json.dumps("""$NEW_CONTENT"""))
-PYEOF
-)
-
-          curl -s -X PATCH \
-            -H "Authorization: Bearer $GH_TOKEN" \
-            -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/gists/$GIST_ID" \
-            -d "{\"files\": {\"$FILENAME\": {\"content\": $ESCAPED}}}" > /dev/null
-
-          echo "Gist updated successfully."
+          python3 .github/scripts/update_gist.py "$TODAY" "$TODAY_TS" "$GIST_ID" "$GH_TOKEN"
