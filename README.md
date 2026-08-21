@@ -97,6 +97,8 @@ Oh, and also, you won't need a second software or process. You do it all in one 
 - Masks and Combos can be refined using Blur/Spread/Contrast control
 ### Debug Accordion:
 - Pick a sampling step and the image components and masks you want to preview, get the results after generation
+### QoL:
+- Slider number fields are unclamped, so they allow setting values beyond the slider's min/max
 
 </details>
 
