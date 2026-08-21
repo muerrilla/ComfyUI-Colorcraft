@@ -871,7 +871,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "ColorcraftShift": "Colorcraft Shift",
     "ColorcraftMasking": "Colorcraft Masking",
     "ColorcraftMaskCombine": "Colorcraft Combine Masks",
-    "ColorcraftMaskBlur": "Refine Mask",
+    "ColorcraftMaskBlur": "Colorcraft Refine Mask",
     "ColorcraftSampler": "Colorcraft Sampler",
     "ColorcraftDebug": "Colorcraft Debug",
 }
