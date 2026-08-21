@@ -879,15 +879,6 @@ const NODE_CONFIGS = {
         hasMaskPlot: false,
         hasSchedule: false,
     },
-    ColorcraftMaskPreview: {
-        boxes: [["color"]],
-        spacers: [
-            { before: "color" },
-        ],
-        accordions: [],
-        hasMaskPlot: false,
-        hasSchedule: false,
-    },
     ColorcraftMasking: {
         boxes: [["mask_mode", "mask_axis", "mask_strength", "mask_width", "mask_center", "mask_hardness"]],
         spacers: [
@@ -913,7 +904,7 @@ const NODE_CONFIGS = {
         hasSchedule: false,
     },
     ColorcraftMaskBlur: {
-        boxes: [["radius", "spread"]],
+        boxes: [["radius", "spread", "contrast"]],
         spacers: [
             { before: "radius" },
         ],
