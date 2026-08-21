@@ -198,7 +198,7 @@ A handful of annotated example workflows are included in `workflows/` folder. Dr
 <td align="center" width="150"><a href="workflows/Colorcraft%20-%20Shift.png"><img src="workflows/Colorcraft%20-%20Shift.png" width="150"></a><br><sub>Shift</sub></td>
 <td align="center" width="150"><a href="workflows/Colorcraft%20-%20Advanced.png"><img src="workflows/Colorcraft%20-%20Advanced.png" width="150"></a><br><sub>Advanced</sub></td>
 <td align="center" width="150"><a href="workflows/Colorcraft%20-%20Advanced%20Masking.png"><img src="workflows/Colorcraft%20-%20Advanced%20Masking.png" width="150"></a><br><sub>Advanced Masking</sub></td>
-<td align="center" width="150"><a href="workflows/Colorcraft%20-%20Mask%20Preview.png"><img src="workflows/Colorcraft%20-%20Mask%20Preview.png" width="150"></a><br><sub>Mask Preview</sub></td>
+<td align="center" width="150"><a href="workflows/Colorcraft%20-%20Debug.png"><img src="workflows/Colorcraft%20-%20Debug.png" width="150"></a><br><sub>Debug</sub></td>
 </tr>
 </table>
 
