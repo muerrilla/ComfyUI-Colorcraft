@@ -95,8 +95,12 @@ Oh, and also, you won't need a second software or process. You do it all in one 
 > The nodes are designed for the classic ComfyUI UI. Nodes 2.0 is not supported until there's at least some dev docs for it.
 
 ## Installation
-
+<details>
+<summary><b>ComfyUI</b></summary>
+<br>
+  
 **Via ComfyUI Manager:**
+
 Open Manager → **Install via Git URL** → paste `https://github.com/muerrilla/ComfyUI-Colorcraft` → Confirm.
 
 **Manually:**
@@ -105,6 +109,28 @@ cd ComfyUI/custom_nodes
 git clone https://github.com/muerrilla/ComfyUI-Colorcraft.git
 ```
 Restart ComfyUI and refresh your browser. The nodes appear under **Muerrilla → Colorcraft** in the node menu.
+
+</details>
+<details>
+<summary><b>Forge Neo</b></summary>
+<br>
+  
+**Via Extensions Tab:**
+
+Go to Extensions → **Install from URL** → paste `https://github.com/muerrilla/ComfyUI-Colorcraft` into first field → Install
+
+**Manually:**
+```
+cd sd-webui-forge-neo/extensions
+git clone https://github.com/muerrilla/ComfyUI-Colorcraft.git
+```
+Restart Forge Neo. The extension appears within your extension accordions on txt2img and img2img tabs.
+
+**Theme:** 
+
+Want a nice minimalist UI theme to go with it? Check out [Neutrino](https://github.com/muerrilla/sd-webui-neutrino)
+
+</details>
 
 ## Getting Started
 

@@ -1,0 +1,381 @@
+.colorcraft-tab-group {
+    padding: 0 !important;
+}
+.colorcraft-tab-group .tab-nav {
+    flex-wrap: nowrap;
+}
+.colorcraft-tab-group .tab-nav button {
+    line-height: normal;
+    font-family: sans-serif !important;
+    letter-spacing: 8%;
+    font-size: 18px !important;
+    height: 36px !important;
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-width: 0;
+    width: 0;
+    text-wrap: nowrap;
+    padding: 0;
+    overflow: hidden;
+    font-weight: bolder;
+    color: var(--body-text-color-subdued) !important;
+    position: relative; /* anchors the .colorcraft-tab-targeted marker below */
+}
+.colorcraft-tab-group .tab-nav button:hover {    
+    font-size: 20px !important;
+    color: var(--body-text-color-subdued) !important;
+}
+.colorcraft-tab-group .tab-nav button.selected {
+    padding-top: var(--spacing-lg);    
+    font-size: 22px !important;
+    color: var(--body-text-color-subdued) !important;
+}
+.colorcraft-tab-group .tab-nav button.colorcraft-tab-active {
+    color: white !important;
+}
+.colorcraft-mod-tab-group .tab-nav button {
+    font-size: 22px !important;
+}
+.colorcraft-mod-tab-group .tab-nav button:hover {    
+    font-size: 26px !important;
+}
+.colorcraft-mod-tab-group .tab-nav button.selected {
+    font-size: 30px !important;
+}
+
+.colorcraft-tab-group .tab-nav button.colorcraft-tab-targeted::after {
+    content: "◐";
+    position: absolute;
+    top: 0px;
+    right: 2px;
+    font-size: 14px;
+    font-weight: 200;
+}
+
+.colorcraft-mask-tab-group {
+    margin-bottom: var(--spacing-xl);
+}
+
+.colorcraft-group {
+    background: var(--accordion-background-color) !important;
+    padding: var(--spacing-sm) !important;
+    padding-bottom: 0 !important;
+    border-radius: var(--radius-lg) !important;
+    margin-bottom: var(--spacing-sm) !important;
+}
+.colorcraft-group > div.styler {
+    overflow: visible;
+}
+
+.colorcraft-plot-column {
+    place-content: space-between;
+}
+.colorcraft-mask-plot-column {
+    place-content: end;
+}
+.colorcraft-top-row {
+    align-items: center; !important;
+    margin: 0 var(--spacing-sm) !important;
+    margin-bottom: var(--spacing-lg) !important;
+}
+.colorcraft-column-row {
+    gap: var(--spacing-sm) !important;
+}
+.colorcraft-row {
+    gap: var(--spacing-sm) !important;
+}
+.colorcraft-column .form {
+    gap: var(--layout-gap);
+}
+
+.colorcraft-active {
+    margin: var(--spacing-lg) var(--spacing-sm) !important;
+}
+
+.colorcraft-schedule-row {
+    padding: 0 var(--spacing-sm);
+    border-radius: var(--radius-lg) !important;
+}
+
+.colorcraft-adv-row .gradio-checkbox {
+    margin: 0;
+    max-width: 10% !important;
+}
+.colorcraft-adv-row input[type="number"] {
+    width: 5em;
+    padding-left: 0 !important;
+}
+
+.colorcraft-tab .input-accordion {
+    margin: var(--spacing-xs) 0 var(--spacing-lg) 0 !important;
+}
+
+.colorcraft-dropdown {
+    margin-bottom: var(--spacing-md) !important;
+}
+.colorcraft-dropdown > div > span {
+    margin-bottom: var(--spacing-sm) !important;
+    margin-left: var(--spacing-sm);
+}
+.colorcraft-shift-mode > div:last-child {
+    align-content: center;
+}
+
+.colorcraft-dropdown.colorcraft-mask-dropdown {
+    margin-top: var(--spacing-md) !important;
+}
+.colorcraft-dropdown.colorcraft-mask-dropdown > div.container {
+    display: flex;
+    place-content: center;
+    align-items: center;
+}
+.colorcraft-dropdown.colorcraft-mask-dropdown > div.container > span {
+    margin-bottom: 0 !important;
+}
+.colorcraft-dropdown.colorcraft-mask-dropdown > div.container > div.wrap {
+    max-width: 50%;
+    margin: 0 var(--spacing-lg);
+}
+
+.colorcraft-debug-group label {
+    padding: 0 var(--spacing-md) 0 0 !important;
+    background: none !important;
+}
+.colorcraft-debug-group label:hover {
+    color: var(--neutral-200) !important;
+}
+
+.gradio-dropdown.colorcraft-dropdown .wrap-inner {
+    padding: 0 0 0 var(--spacing-sm) !important;
+}
+
+#script_txt2img_colorcraft_accordion .gradio-slider label,
+#script_img2img_colorcraft_accordion .gradio-slider label {
+    padding-left: var(--spacing-sm);
+}
+#script_txt2img_colorcraft_accordion .gradio-slider span, 
+#script_img2img_colorcraft_accordion .gradio-slider span {
+    margin: 0;
+}
+
+#script_txt2img_colorcraft_accordion .gradio-slider div.head, 
+#script_img2img_colorcraft_accordion .gradio-slider div.head {
+    align-items: center;
+}
+
+/* Combo tab label overlay -- JS writes to data-colorcraft-label instead of
+   the button's real text (see colorcraft.js for why). font-size:0 hides
+   just the native text while keeping the button's own chrome (background/
+   border/shape) intact, unlike visibility:hidden, which hides the whole
+   button. Sizes are hardcoded px, not em/rem (em resolves relative to the
+   collapsed 0 parent -> zero; rem resolves relative to the root element,
+   not the tab-nav's context -> wrong size) -- adjust these three px
+   values to match whatever the plain tab-nav buttons compute to in your
+   theme. */
+.colorcraft-combo-tab-group .tab-nav button[data-colorcraft-label] {
+    font-size: 0 !important;
+}
+.colorcraft-combo-tab-group .tab-nav button[data-colorcraft-label]:hover {
+    font-size: 0 !important;
+}
+.colorcraft-combo-tab-group .tab-nav button[data-colorcraft-label].selected {
+    font-size: 0 !important;
+}
+.colorcraft-combo-tab-group .tab-nav button[data-colorcraft-label]::after {
+    content: attr(data-colorcraft-label);
+    font-size: 18px;
+}
+.colorcraft-combo-tab-group .tab-nav button[data-colorcraft-label]:hover::after {
+    font-size: 20px;
+}
+.colorcraft-combo-tab-group .tab-nav button[data-colorcraft-label].selected::after {
+    font-size: 22px;
+}
+
+/* Schedule/mask plot canvases -- a raw <canvas> has no intrinsic size that
+   survives inside a flex column with no defined cross-size, so it
+   collapses to 0x0. Explicit height + block display gives it something
+   to hold onto; width:100% lets it fill the column alongside the
+   Contrast slider / mask axis dropdown. */
+.colorcraft-schedule-plot {
+    display: block;
+    width: 100%;
+    height: 42px;
+}
+.colorcraft-mask-plot {
+    display: block;
+    width: 100%;
+    height: 125px;
+}
+/* Slider track gradients -- animated via a registered custom property
+   (--colorcraft-grad-alpha) driving the gradient stops' own alpha
+   channel, rather than swapping `background` on :hover directly.
+   background-image changes can't be smoothly interpolated by the browser
+   (a gradient can't cross-fade into "no gradient"), so the gradient is
+   present in BOTH states and only its opacity animates -- the theme's
+   own track color stays visible underneath at rest (alpha 0), with the
+   colored gradient fading in over it on hover.
+
+   Asymmetric timing: fast fade-in, slow delayed fade-out. The ENTERING
+   state's own transition declares the timing for going INTO it, and the
+   base state's transition declares the timing for coming BACK -- so the
+   fast timing lives on the :hover rule, and the slow+delayed timing
+   lives on the base rule.
+
+   Same hsl() hue/saturation/lightness values as LINEAR_AXIS_COLORS in
+   colorcraft.js throughout. */
+@property --colorcraft-grad-alpha {
+    syntax: '<number>';
+    inherits: false;
+    initial-value: 0;
+}
+
+.colorcraft-temperature input[type="range"] {
+    --colorcraft-grad-alpha: 0;
+    background-image: linear-gradient(135deg,
+        hsla(204, 100%, 50%, var(--colorcraft-grad-alpha)) 0%,
+        hsla(0, 0%, 68%, var(--colorcraft-grad-alpha)) 50%,
+        hsla(30, 100%, 50%, var(--colorcraft-grad-alpha)) 100%) !important;
+    background-size: 105% 100% !important;
+    background-position-x: center !important;
+    transition: --colorcraft-grad-alpha 500ms ease-out 800ms;
+}
+.colorcraft-temperature input[type="range"]:hover {
+    --colorcraft-grad-alpha: 1;
+    transition: none;
+}
+.colorcraft-tint input[type="range"] {
+    --colorcraft-grad-alpha: 0;
+    background-image: linear-gradient(135deg,
+        hsla(130, 100%, 45%, var(--colorcraft-grad-alpha)) 0%,
+        hsla(0, 0%, 68%, var(--colorcraft-grad-alpha)) 50%,
+        hsla(304, 100%, 50%, var(--colorcraft-grad-alpha)) 100%) !important;
+    background-size: 105% 100% !important;
+    background-position-x: center !important;
+    transition: --colorcraft-grad-alpha 500ms ease-out 800ms;
+}
+.colorcraft-tint input[type="range"]:hover {
+    --colorcraft-grad-alpha: 1;
+    transition: none;
+}
+.colorcraft-temp-plus-tint input[type="range"] {
+    --colorcraft-grad-alpha: 0;
+    background-image: linear-gradient(135deg,
+        hsla(181, 100%, 50%, var(--colorcraft-grad-alpha)) 0%,
+        hsla(0, 0%, 68%, var(--colorcraft-grad-alpha)) 50%,
+        hsla(354, 100%, 50%, var(--colorcraft-grad-alpha)) 100%) !important;
+    background-size: 105% 100% !important;
+    background-position-x: center !important;
+    transition: --colorcraft-grad-alpha 500ms ease-out 800ms;
+}
+.colorcraft-temp-plus-tint input[type="range"]:hover {
+    --colorcraft-grad-alpha: 1;
+    transition: none;
+}
+.colorcraft-temp-minus-tint input[type="range"] {
+    --colorcraft-grad-alpha: 0;
+    background-image: linear-gradient(135deg,
+        hsla(250, 75%, 60%, var(--colorcraft-grad-alpha)) 0%,
+        hsla(0, 0%, 68%, var(--colorcraft-grad-alpha)) 50%,
+        hsla(75, 100%, 50%, var(--colorcraft-grad-alpha)) 100%) !important;
+    background-size: 105% 100% !important;
+    background-position-x: center !important;
+    transition: --colorcraft-grad-alpha 500ms ease-out 800ms;
+}
+.colorcraft-temp-minus-tint input[type="range"]:hover {
+    --colorcraft-grad-alpha: 1;
+    transition: none;
+}
+.colorcraft-lab-a input[type="range"] {
+    --colorcraft-grad-alpha: 0;
+    background-image: linear-gradient(135deg,
+        hsla(155, 100%, 45%, var(--colorcraft-grad-alpha)) 0%,
+        hsla(0, 0%, 68%, var(--colorcraft-grad-alpha)) 50%,
+        hsla(322, 100%, 50%, var(--colorcraft-grad-alpha)) 100%) !important;
+    background-size: 105% 100% !important;
+    background-position-x: center !important;
+    transition: --colorcraft-grad-alpha 500ms ease-out 800ms;
+}
+.colorcraft-lab-a input[type="range"]:hover {
+    --colorcraft-grad-alpha: 1;
+    transition: none;
+}
+.colorcraft-lab-b input[type="range"] {
+    --colorcraft-grad-alpha: 0;
+    background-image: linear-gradient(135deg,
+        hsla(225, 100%, 50%, var(--colorcraft-grad-alpha)) 0%,
+        hsla(0, 0%, 68%, var(--colorcraft-grad-alpha)) 50%,
+        hsla(55, 100%, 50%, var(--colorcraft-grad-alpha)) 100%) !important;
+    background-size: 105% 100% !important;
+    background-position-x: center !important;
+    transition: --colorcraft-grad-alpha 500ms ease-out 800ms;
+}
+.colorcraft-lab-b input[type="range"]:hover {
+    --colorcraft-grad-alpha: 1;
+    transition: none;
+}
+.colorcraft-lab-a-plus-b input[type="range"] {
+    --colorcraft-grad-alpha: 0;
+    background-image: linear-gradient(135deg,
+        hsla(198, 100%, 55%, var(--colorcraft-grad-alpha)) 0%,
+        hsla(0, 0%, 68%, var(--colorcraft-grad-alpha)) 50%,
+        hsla(18, 100%, 50%, var(--colorcraft-grad-alpha)) 100%) !important;
+    background-size: 105% 100% !important;
+    background-position-x: center !important;
+    transition: --colorcraft-grad-alpha 500ms ease-out 800ms;
+}
+.colorcraft-lab-a-plus-b input[type="range"]:hover {
+    --colorcraft-grad-alpha: 1;
+    transition: none;
+}
+.colorcraft-lab-a-minus-b input[type="range"] {
+    --colorcraft-grad-alpha: 0;
+    background-image: linear-gradient(135deg,
+        hsla(95, 100%, 45%, var(--colorcraft-grad-alpha)) 0%,
+        hsla(0, 0%, 68%, var(--colorcraft-grad-alpha)) 50%,
+        hsla(270, 100%, 60%, var(--colorcraft-grad-alpha)) 100%) !important;
+    background-size: 105% 100% !important;
+    background-position-x: center !important;
+    transition: --colorcraft-grad-alpha 500ms ease-out 800ms;
+}
+.colorcraft-lab-a-minus-b input[type="range"]:hover {
+    --colorcraft-grad-alpha: 1;
+    transition: none;
+}
+
+.colorcraft-dropdown.colorcraft-changed > div > span {
+    font-weight: bolder;
+    color: white;
+}
+.colorcraft-dropdown.colorcraft-changed input {
+    font-weight: bolder;
+    color: white;
+}
+#script_txt2img_colorcraft_accordion .gradio-slider.colorcraft-changed span,
+#script_img2img_colorcraft_accordion .gradio-slider.colorcraft-changed span {
+    font-weight: bolder;
+    color: white;
+}
+#script_txt2img_colorcraft_accordion .gradio-slider.colorcraft-changed input,
+#script_img2img_colorcraft_accordion .gradio-slider.colorcraft-changed input {
+    font-weight: bolder;
+    color: white;
+}
+
+button.secondary.colorcraft-reset {
+    min-width: min(10px, 100%);
+    max-width: 28px !important;
+    font-weight: bold !important;
+    background: transparent !important;
+    border-radius: var(--radius-md);
+    font-size: large;
+    line-height: 20px;
+    position: absolute;
+    right: -10px;
+    top: -8px;
+    z-index: 1;
+}
+button.secondary.colorcraft-reset:hover {
+    background: #ff3e3ee6 !important;
+    color: var(--background-fill-secondary);
+}
