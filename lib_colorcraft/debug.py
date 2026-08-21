@@ -169,9 +169,11 @@ def annotate_debug_image(img, label, raw_values, overlay_color, curve_infos=None
     text spanning all of them combined."""
     w, h = img.size
     # Text sizes (and surrounding padding/margins/offsets) scale relative
-    # to a 512px-wide image. Line widths and X_MARGIN/legend height stay
-    # unscaled -- not text.
-    scale = w / 512.0
+    # to a 512px reference on the SHORTER side -- using w alone blows up
+    # text/offsets on wide landscape images, since the limiting dimension
+    # for how much overlay content fits is whichever side is shorter.
+    # Line widths and X_MARGIN/legend height stay unscaled -- not text.
+    scale = min(w, h) / 512.0
     label_font_size = round(20 * scale)
     label_pos = (8 * scale, 4 * scale)
     label_pad = 3 * scale
