@@ -2,7 +2,7 @@
 
 # COLORCRAFT
 
-### Color grading for ComfyUI, applied where it actually matters: inside the diffusion process itself!
+### Color grading for ComfyUI and Forge Neo, applied where it actually matters: inside the diffusion process itself!
 
 <!-- TODO: hero image -->
 <!-- <img src="assets/hero.png" alt="Colorcraft hero" width="800"> -->
@@ -59,8 +59,11 @@ And because the edit happens while the image is still forming, it doesn't just r
 </p>
 Oh, and also, you won't need a second software or process. You do it all in one go.
 
-## Nodes
-
+## Features
+<details>
+<summary><b>ComfyUI Nodes</b></summary>
+  
+### Main:
 - **Sampler** — the actual workhorse. All modifiers with their schedules and masks chain together and end up here
 - **Schedule** — build one schedule and share it across several modifiers, or use one per modifier
 ### Modifiers:
@@ -75,7 +78,29 @@ Oh, and also, you won't need a second software or process. You do it all in one 
 - **Masking** — key any edit by luminance, hue, and more
 - **Combine Masks** — build up complex, compound masks from simple ones
 - **Refine Mask** — refine masks using blur, spread, and contrast control
+### Debugging:
 - **Debug** — view image components (exposure, saturation, etc.) and their stats, and preview masks
+
+</details>
+
+<details>
+<summary><b>Forge Neo Extension</b></summary>
+  
+### Modifier Tabs:
+- A stack of 10 modifier tabs is available, and the active ones will run in sequence
+- Each modifier has its own schedule
+- Each modifier exposes the full set of adjustments
+- Each modifier can use a single mask or combo
+### Masking Accordion:
+- 10 Mask tabs are available for range masking
+- 5 Mask Combo tabs are available for combining masks using AND/OR/SUB/XOR operations
+- Masks and Combos can be refined using Blur/Spread/Contrast control
+### Debug Accordion:
+- Pick a sampling step and the image components and masks you want to preview, get the results after generation
+### QoL:
+- Slider number fields are unclamped, so they allow setting values beyond the slider's min/max
+
+</details>
 
 ## Gallery
 
@@ -93,7 +118,7 @@ Oh, and also, you won't need a second software or process. You do it all in one 
 ## Requirements
 
 - [ComfyUI](https://comfy.org/) / [SD Webui Forge Neo](https://github.com/Haoming02/sd-webui-forge-classic/tree/neo)
-- **Basic** node (Contrast slider and Color Shift sliders in Neo) should work with any model that has a VAE, no restrictions
+- **Basic** node (Contrast and Color Shift sliders in Neo) should work with any model that has a VAE, no restrictions
 - Every other node needs a matching basis for the model's VAE family. Currently supported:
   - **Qwen Image VAE Family** — **Krea2** / Qwen Image / Anima / ...
   - **Flux AE Family** — **Z-Image** / Flux / ...
