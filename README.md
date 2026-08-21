@@ -92,8 +92,8 @@ Oh, and also, you won't need a second software or process. You do it all in one 
 
 ## Requirements
 
-- ComfyUI
-- **Basic** node should work with any model that has a VAE, no restrictions
+- [ComfyUI](https://comfy.org/) / [SD Webui Forge Neo](https://github.com/Haoming02/sd-webui-forge-classic/tree/neo)
+- **Basic** node (Contrast slider and Color Shift sliders in Neo) should work with any model that has a VAE, no restrictions
 - Every other node needs a matching basis for the model's VAE family. Currently supported:
   - **Qwen Image VAE Family** — **Krea2** / Qwen Image / Anima / ...
   - **Flux AE Family** — **Z-Image** / Flux / ...
