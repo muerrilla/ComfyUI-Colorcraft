@@ -8,31 +8,16 @@ on:
 jobs:
   track:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write        # needed so the action can commit the CSV back to your repo
 
     steps:
 
-      # 1. Check out your repo so the action can read/write files in it
-      - name: Checkout repo
-        uses: actions/checkout@v4
-
-      # 2. Fetch all four traffic metrics and append them to the CSV
-      - name: Fetch traffic and save
+      # 1. Fetch all four traffic metrics
+      - name: Fetch traffic and save to Gist
         env:
-          GH_TOKEN: ${{ secrets.TRAFFIC_TOKEN }}   # your PAT, stored as a secret (see setup guide)
-          REPO: ${{ github.repository }}            # automatically "owner/repo-name"
+          GH_TOKEN: ${{ secrets.TRAFFIC_TOKEN }}   # same PAT as before (needs gist scope — see note)
+          REPO: ${{ github.repository }}
+          GIST_ID: ${{ secrets.TRAFFIC_GIST_ID }}  # the ID of your private gist (see setup)
         run: |
-          # Make sure the folder exists (first run)
-          mkdir -p .github/traffic-data
-
-          CSV=".github/traffic-data/history.csv"
-
-          # Write the header row only if the file doesn't exist yet
-          if [ ! -f "$CSV" ]; then
-            echo "date,clones,unique_cloners,views,unique_visitors" > "$CSV"
-          fi
-
           TODAY=$(date -u +%Y-%m-%d)
 
           # ── Clones ──────────────────────────────────────────────────────
@@ -47,57 +32,82 @@ jobs:
             -H "Accept: application/vnd.github+json" \
             "https://api.github.com/repos/$REPO/traffic/views")
 
-          # Pull out today's numbers (default to 0 if today isn't in the response yet)
-          CLONES=$(echo "$CLONES_JSON" | \
-            python3 -c "
-          import json, sys
-          data = json.load(sys.stdin)
-          today = '$(date -u +%Y-%m-%dT00:00:00Z)'
-          row = next((d for d in data.get('clones', []) if d['timestamp'] == today), {})
-          print(row.get('count', 0))
-          ")
+          # ── Extract today's numbers ──────────────────────────────────────
+          CLONES=$(echo "$CLONES_JSON" | python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+today = '$(date -u +%Y-%m-%dT00:00:00Z)'
+row = next((d for d in data.get('clones', []) if d['timestamp'] == today), {})
+print(row.get('count', 0))
+")
 
-          UNIQUE_CLONERS=$(echo "$CLONES_JSON" | \
-            python3 -c "
-          import json, sys
-          data = json.load(sys.stdin)
-          today = '$(date -u +%Y-%m-%dT00:00:00Z)'
-          row = next((d for d in data.get('clones', []) if d['timestamp'] == today), {})
-          print(row.get('uniques', 0))
-          ")
+          UNIQUE_CLONERS=$(echo "$CLONES_JSON" | python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+today = '$(date -u +%Y-%m-%dT00:00:00Z)'
+row = next((d for d in data.get('clones', []) if d['timestamp'] == today), {})
+print(row.get('uniques', 0))
+")
 
-          VIEWS=$(echo "$VIEWS_JSON" | \
-            python3 -c "
-          import json, sys
-          data = json.load(sys.stdin)
-          today = '$(date -u +%Y-%m-%dT00:00:00Z)'
-          row = next((d for d in data.get('views', []) if d['timestamp'] == today), {})
-          print(row.get('count', 0))
-          ")
+          VIEWS=$(echo "$VIEWS_JSON" | python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+today = '$(date -u +%Y-%m-%dT00:00:00Z)'
+row = next((d for d in data.get('views', []) if d['timestamp'] == today), {})
+print(row.get('count', 0))
+")
 
-          UNIQUE_VISITORS=$(echo "$VIEWS_JSON" | \
-            python3 -c "
-          import json, sys
-          data = json.load(sys.stdin)
-          today = '$(date -u +%Y-%m-%dT00:00:00Z)'
-          row = next((d for d in data.get('views', []) if d['timestamp'] == today), {})
-          print(row.get('uniques', 0))
-          ")
+          UNIQUE_VISITORS=$(echo "$VIEWS_JSON" | python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+today = '$(date -u +%Y-%m-%dT00:00:00Z)'
+row = next((d for d in data.get('views', []) if d['timestamp'] == today), {})
+print(row.get('uniques', 0))
+")
 
-          # Avoid writing a duplicate row if the action somehow runs twice today
-          if grep -q "^$TODAY," "$CSV" 2>/dev/null; then
+          echo "Today: $TODAY | clones=$CLONES unique_cloners=$UNIQUE_CLONERS views=$VIEWS unique_visitors=$UNIQUE_VISITORS"
+
+          # ── Fetch current Gist content ───────────────────────────────────
+          GIST_JSON=$(curl -s \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/gists/$GIST_ID")
+
+          # Get the filename of the first file in the gist
+          FILENAME=$(echo "$GIST_JSON" | python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+print(list(data['files'].keys())[0])
+")
+
+          # Get current CSV content
+          CURRENT=$(echo "$GIST_JSON" | python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+filename = list(data['files'].keys())[0]
+print(data['files'][filename]['content'])
+")
+
+          # ── Skip if today already recorded ───────────────────────────────
+          if echo "$CURRENT" | grep -q "^$TODAY,"; then
             echo "Row for $TODAY already exists — skipping."
-          else
-            echo "$TODAY,$CLONES,$UNIQUE_CLONERS,$VIEWS,$UNIQUE_VISITORS" >> "$CSV"
-            echo "Appended: $TODAY | clones=$CLONES unique_cloners=$UNIQUE_CLONERS views=$VIEWS unique_visitors=$UNIQUE_VISITORS"
+            exit 0
           fi
 
-      # 3. Commit and push the updated CSV back to the repo
-      - name: Commit updated CSV
-        run: |
-          git config user.name  "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add .github/traffic-data/history.csv
-          # Only commit if there's actually something new
-          git diff --cached --quiet || git commit -m "chore: traffic snapshot $(date -u +%Y-%m-%d)"
-          git push
+          # ── Append new row and push back to Gist ─────────────────────────
+          NEW_CONTENT="${CURRENT}
+${TODAY},${CLONES},${UNIQUE_CLONERS},${VIEWS},${UNIQUE_VISITORS}"
+
+          # Escape content for JSON
+          ESCAPED=$(python3 -c "
+import json, sys
+print(json.dumps(sys.stdin.read()))
+" <<< "$NEW_CONTENT")
+
+          curl -s -X PATCH \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/gists/$GIST_ID" \
+            -d "{\"files\": {\"$FILENAME\": {\"content\": $ESCAPED}}}" > /dev/null
+
+          echo "Gist updated successfully."
