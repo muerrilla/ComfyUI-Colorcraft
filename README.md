@@ -18,14 +18,24 @@
 
 ---
 
-Colorcraft is a set of modular nodes that chain together, letting you build your own custom color-editing pipeline out of modifiers, schedules, and masks. Mix and match exactly what your shot needs.
+Colorcraft is a set of modular nodes that chain together (ComfyUI) or sequential adjustment layers (Forge Neo), that lets you build your own custom color-editing pipeline out of modifiers, schedules, and masks. Mix and match exactly what your shot needs.
 
 Between the axes and masks on offer, it's close to the full toolset of something like Lightroom or Camera Raw... applied somewhere those guys could never reach: mid-generation, in latent space.
 
-<p align="center">
-<a href="assets/nodes.jpg"><img src="assets/nodes.jpg" width="480" alt="Screenshot of all nodes in the pack"></a>
-<br><sub>Click to view full size</sub>
-</p>
+<table width="100%">
+  <tr>
+    <td align="center" width="50%">
+      <img src="assets/comfy-nodes.jpg" alt="Screenshot of ComfyUI Nodes">
+      <br>
+      <sub>ComfyUI Nodes</sub>
+    </td>
+    <td align="center" width="50%">
+      <img src="assets/forge-extension.png" alt="Screenshot of Forge Neo Extension Accordion">
+      <br>
+      <sub>Forge Neo Extension  — screenshot uses <a href="https://github.com/muerrilla/sd-webui-neutrino">Neutrino</a></sub>
+    </td>
+  </tr>
+</table>
 
 Exposure, Contrast, Tone Mapping, Saturation et al., White Balance/Tint, Hue Shifting, Split-toning/Cross-processing, and Range Masking, all done without LoRAs, prompt hijinks, CFG boost, post-processing effects, etc., just using pure vector math on the latent.
 
@@ -39,13 +49,13 @@ It's the difference between metering a shot correctly at capture versus fixing t
 <br>
 <p align="center">
 <a href="assets/dynamic-range.jpg"><img src="assets/dynamic-range.jpg" width="720" alt="Sample showing the high dynamic range property"></a>
-<br><sub>High Dynamic Range: middle is the original — note the lamps and the shutters (Click to view full size)</sub>
+<br><sub>High Dynamic Range: middle is the original — note the lamps and the shutters</sub>
 </p>
 And because the edit happens while the image is still forming, it doesn't just recolor the result: it can steer the generation itself (e.g. making darker, brighter, or more colorful compositions than the model would produce on its own). You can even push or pull fine detail and texture directly, something no post-process filter can genuinely add back once it's gone.
 <br><br>
 <p align="center">
 <a href="assets/steering.jpg"><img src="assets/steering.jpg" width="720" alt="Sample showing the steering property"></a>
-<br><sub>Steering: top-left is the original, the rest use same prompt/seed with different edits applied at early steps (Click to view full size)</sub>
+<br><sub>Steering: top-left is the original, the rest use same prompt/seed with different edits applied at early steps</sub>
 </p>
 Oh, and also, you won't need a second software or process. You do it all in one go.
 
@@ -63,9 +73,9 @@ Oh, and also, you won't need a second software or process. You do it all in one 
 - **Shift** — push/pull colors towards a specifically defined color
 ### Masking:
 - **Masking** — key any edit by luminance, hue, and more
-- **Mask Blur** — blur masks and control the spread (grow/shrink)
 - **Combine Masks** — build up complex, compound masks from simple ones
-- **Mask Preview** — tiny helper node for visualizing masks
+- **Refine Mask** — refine masks using blur, spread, and contrast control
+- **Debug** — view image components (exposure, saturation, etc.) and their stats, and preview masks
 
 ## Gallery
 
