@@ -91,7 +91,7 @@ class ColorcraftBasic:
                 "smooth": ("BOOLEAN", {"default": True}),
                 # UI-only -- purely for the JS schedule plot tick marks; never read
                 # server-side, since the sampler already knows the real step count.
-                "plot_steps": ("INT", {"default": 8, "min": 2, "max": 20, "step": 1}),
+                "plot_steps": ("INT", {"default": 8, "min": 2, "max": 50, "step": 1}),
 
                 # -- contrast --------------------------------------------------------
                 "contrast": ("FLOAT", {"default": 0.0, "min": -10.0, "max": 10.0, "step": 0.01}),
@@ -148,7 +148,7 @@ class ColorcraftAdvanced:
                 "end_off": ("FLOAT", {"default": 0.0, "min": -10.0, "max": 10.0, "step": 0.01}),
                 "smooth": ("BOOLEAN", {"default": True}),
                 # UI-only -- purely for the JS schedule plot tick marks;
-                "plot_steps": ("INT", {"default": 8, "min": 2, "max": 20, "step": 1}),
+                "plot_steps": ("INT", {"default": 8, "min": 2, "max": 50, "step": 1}),
 
                 # -- luma group ------------------------------------------------------
                 "exposure": ("FLOAT", {"default": 0.0, "min": -10.0, "max": 10.0, "step": 0.01}),
@@ -240,7 +240,7 @@ class ColorcraftSchedule:
                 "end_off": ("FLOAT", {"default": 0.0, "min": -10.0, "max": 10.0, "step": 0.01}),
                 "smooth": ("BOOLEAN", {"default": True}),
                 # UI-only -- purely for the JS schedule plot tick marks;
-                "plot_steps": ("INT", {"default": 8, "min": 2, "max": 20, "step": 1}),
+                "plot_steps": ("INT", {"default": 8, "min": 2, "max": 50, "step": 1}),
             },
         }
 
