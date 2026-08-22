@@ -221,36 +221,41 @@
             endOff: pair('colorcraft-end-off'),
             smoothEl: tabEl.querySelector('.colorcraft-smooth input[type=checkbox]'),
             advancedEl: tabEl.querySelector('.colorcraft-advanced-toggle input[type=checkbox]'),
+            hiresEl: tabEl.querySelector('.colorcraft-hires input[type=checkbox]'),
         };
     }
 
     // Not watched for live changes -- read once at redraw time, triggered
-    // only by the schedule sliders changing. A brief tick-mark mismatch
-    // if steps changes without touching a schedule slider is an
-    // acceptable tradeoff against redrawing every plot on every drag.
-    function readSteps(tabEl) {
+    // only by the schedule sliders (and now the hires checkbox) changing.
+    // A brief tick-mark mismatch if steps changes without touching one of
+    // those is an acceptable tradeoff against redrawing every plot on
+    // every drag.
+    function readSteps(tabEl, hiresEl) {
         const accordionRoot = tabEl.closest('[id$="_colorcraft_accordion"]');
         const isImg2img = accordionRoot && accordionRoot.id.startsWith('script_img2img');
-        const stepsSelector = isImg2img ? '#img2img_steps input[type=number]' : '#txt2img_steps input[type=number]';
-        return readNumber(gradioApp().querySelector(stepsSelector), 20);
+        const tabPrefix = isImg2img ? 'img2img' : 'txt2img';
+        const useHires = hiresEl ? hiresEl.checked : false;
+        const fieldName = useHires ? 'hires_steps' : 'steps';
+        return readNumber(gradioApp().querySelector(`#${tabPrefix}_${fieldName} input[type=number]`), 20);
     }
 
     const wiredSchedulePlots = new Map(); // canvas -> redraw function
-    let stepsWatcherWired = false;
+    const wiredStepsInputs = new Set();
 
     function setupStepsWatcher() {
-        if (stepsWatcherWired) return;
         const els = [
             ...gradioApp().querySelectorAll('#txt2img_steps input'),
             ...gradioApp().querySelectorAll('#img2img_steps input'),
+            ...gradioApp().querySelectorAll('#txt2img_hires_steps input'),
+            ...gradioApp().querySelectorAll('#img2img_hires_steps input'),
         ];
-        if (els.length === 0) return; // not rendered yet -- retry next onUiUpdate
         const redrawAll = () => wiredSchedulePlots.forEach((redraw) => redraw());
         els.forEach((el) => {
+            if (wiredStepsInputs.has(el)) return;
             el.addEventListener('input', redrawAll);
             el.addEventListener('change', redrawAll);
+            wiredStepsInputs.add(el);
         });
-        stepsWatcherWired = true;
     }
 
     function setupSchedulePlots() {
@@ -263,7 +268,7 @@
             const watched = [
                 ...f.strength.watchEls, ...f.start.watchEls, ...f.end.watchEls,
                 ...f.bias.watchEls, ...f.exponent.watchEls, ...f.startOff.watchEls, ...f.endOff.watchEls,
-                f.smoothEl, f.advancedEl,
+                f.smoothEl, f.advancedEl, f.hiresEl,
             ].filter(Boolean);
             if (watched.length === 0) return; // fields not rendered yet -- retry next onUiUpdate
 
@@ -278,7 +283,7 @@
                     start_off: advanced ? readNumber(f.startOff.readEl, 0) : 0,
                     end_off: advanced ? readNumber(f.endOff.readEl, 0) : 0,
                     smooth: f.smoothEl ? f.smoothEl.checked : true,
-                }, readSteps(tabEl));
+                }, readSteps(tabEl, f.hiresEl));
             }
 
             watched.forEach((el) => el.addEventListener('input', redraw));
@@ -608,11 +613,10 @@
 })();
 
 // ---------------------------------------------------------------------------
-// "Changed from default" highlighting -- generic across every slider and
-// dropdown in both Colorcraft accordions, via the shared wrapper classes
-// (.gradio-slider / .colorcraft-dropdown) already on every one of them.
-// Excludes checkboxes (the modifier Active checkbox already gets feedback
-// via the tab-label highlight).
+// "Changed from default" highlighting -- generic across every slider,
+// dropdown, and checkbox in both Colorcraft accordions, via the shared
+// wrapper classes (.gradio-slider / .colorcraft-dropdown / .gradio-checkbox)
+// already on every one of them.
 //
 // Default value is captured as whatever's present the first time each
 // wrapper is seen. Dropdown selection fires neither 'input' nor 'change'
@@ -623,7 +627,7 @@
 // ---------------------------------------------------------------------------
 
 (function () {
-    const wiredChecks = new Map(); // wrapper -> check function, covers sliders and dropdowns alike
+    const wiredChecks = new Map(); // wrapper -> check function, covers sliders, dropdowns, and checkboxes alike
 
     function watchSlider(wrapper) {
         if (wrapper.dataset.ccDefaultCaptured) return;
@@ -669,10 +673,26 @@
         wiredChecks.set(wrapper, check);
     }
 
+    function watchCheckbox(wrapper) {
+        if (wrapper.dataset.ccDefaultCaptured) return;
+        const inputEl = wrapper.querySelector('input[type=checkbox]');
+        if (!inputEl) return;
+        wrapper.dataset.ccDefault = inputEl.checked ? "1" : "0";
+        wrapper.dataset.ccDefaultCaptured = "1";
+
+        function check() {
+            wrapper.classList.toggle('colorcraft-changed', (inputEl.checked ? "1" : "0") !== wrapper.dataset.ccDefault);
+        }
+        inputEl.addEventListener('input', check);
+        inputEl.addEventListener('change', check);
+        wiredChecks.set(wrapper, check);
+    }
+
     function setupChangeHighlighting() {
         document.querySelectorAll('[id$="_colorcraft_accordion"]').forEach((accordion) => {
             accordion.querySelectorAll('.gradio-slider').forEach(watchSlider);
             accordion.querySelectorAll('.colorcraft-dropdown').forEach(watchDropdown);
+            accordion.querySelectorAll('.gradio-checkbox').forEach(watchCheckbox);
         });
         // Re-run every already-known check too, not just newly-discovered
         // wrappers -- this is the actual fix for infotext restore, which

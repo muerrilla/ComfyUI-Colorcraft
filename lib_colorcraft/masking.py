@@ -159,6 +159,22 @@ def apply_mask_spread(mask, spread):
     return torch.clamp(mask, 0.0, 1.0) ** gamma
 
 
+def apply_mask_normalize(mask):
+    """Per-batch-item min-max stretch to exactly [0,1]. A mask's actual
+    values after blur/spread can span a much narrower range than its
+    [0,1] domain (e.g. [0.4, 0.6]) -- apply_mask_contrast's ease curve is
+    calibrated around the full domain, so pushing contrast on a
+    narrow-range mask produces a weaker, less predictable result than
+    expected. Normalizing first means contrast always sees a genuinely
+    full-range input. A uniform mask (min==max) stays uniform rather
+    than dividing by zero."""
+    B = mask.shape[0]
+    flat = mask.reshape(B, -1)
+    mn = flat.amin(dim=1).view(B, 1, 1, 1)
+    mx = flat.amax(dim=1).view(B, 1, 1, 1)
+    return (mask - mn) / (mx - mn).clamp_min(1e-8)
+
+
 def apply_mask_contrast(mask, contrast):
     """Photoshop's "Contrast" mask-refinement slider: steepens (or
     flattens) the transition around the mask's fixed midpoint (0.5) --
@@ -199,6 +215,8 @@ def resolve_mask_tensor(mask_spec, pre, cur_basis, dev, vae_downscale_factor):
         mask = resolve_mask_tensor(mask_spec["a"], pre, cur_basis, dev, vae_downscale_factor)
         mask = gaussian_blur_mask(mask, mask_spec["blur"] / vae_downscale_factor)
         mask = apply_mask_spread(mask, mask_spec["spread"])
+        if mask_spec.get("normalize", False):
+            mask = apply_mask_normalize(mask)
         return apply_mask_contrast(mask, mask_spec.get("contrast", 0.0))
 
     if "operation" in mask_spec:
@@ -235,4 +253,3 @@ def apply_mask_gate(pre, out, mask_spec, dev, cur_basis, vae_downscale_factor):
         return out
     mask = resolve_mask_tensor(mask_spec, pre, cur_basis, dev, vae_downscale_factor)
     return pre + mask * (out - pre)
-

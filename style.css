@@ -71,13 +71,18 @@
     place-content: space-between;
 }
 .colorcraft-mask-plot-column {
-    place-content: end;
+    place-content: space-between;
 }
+
 .colorcraft-top-row {
     align-items: center; !important;
     margin: 0 var(--spacing-sm) !important;
     margin-bottom: var(--spacing-lg) !important;
 }
+.colorcraft-top-row > .form:has(.gradio-checkbox) {
+    flex-grow: 1 !important;
+}
+
 .colorcraft-column-row {
     gap: var(--spacing-sm) !important;
 }
@@ -89,7 +94,20 @@
 }
 
 .colorcraft-active {
-    margin: var(--spacing-lg) var(--spacing-sm) !important;
+    margin: auto var(--spacing-sm) !important;
+}
+.colorcraft-active + .gradio-checkbox {
+    margin: auto var(--spacing-sm) !important;
+}
+
+.colorcraft-norm {
+    margin: 0 var(--spacing-sm) !important;
+}
+.colorcraft-norm > label > span {
+    line-height: normal;
+}
+.colorcraft-combo-tab-group .colorcraft-row > .form > .colorcraft-dropdown {
+    flex-grow: .68;
 }
 
 .colorcraft-schedule-row {
@@ -205,7 +223,8 @@
 .colorcraft-mask-plot {
     display: block;
     width: 100%;
-    height: 125px;
+    height: 110px;
+    margin-top: var(--spacing-md) !important;
 }
 /* Slider track gradients -- animated via a registered custom property
    (--colorcraft-grad-alpha) driving the gradient stops' own alpha
@@ -361,6 +380,11 @@
     font-weight: bolder;
     color: white;
 }
+#script_txt2img_colorcraft_accordion .gradio-checkbox.colorcraft-changed label span,
+#script_img2img_colorcraft_accordion .gradio-checkbox.colorcraft-changed label span {
+    font-weight: bolder;
+    color: white;
+}
 
 button.secondary.colorcraft-reset {
     min-width: min(10px, 100%);
@@ -379,3 +403,11 @@ button.secondary.colorcraft-reset:hover {
     background: #ff3e3ee6 !important;
     color: var(--background-fill-secondary);
 }
+
+#txt2img_gallery caption, #img2img_gallery caption {
+    display: none;
+}
+#txt2img_gallery div.caption-label, #img2img_gallery div.caption-label {
+    display: none;
+}
+

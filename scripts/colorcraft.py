@@ -12,6 +12,7 @@ from modules.script_callbacks import (
     on_cfg_denoiser, on_cfg_after_cfg, remove_callbacks_for_function, on_infotext_pasted,
 )
 from modules.shared import device
+import modules.shared as shared
 import modules.devices as devices
 from modules.ui_components import InputAccordion
 
@@ -37,6 +38,7 @@ from lib_colorcraft.basis import (
 VECTORS_DIR = os.path.join(COLORCRAFT_ROOT, "vectors")
 
 ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"]
+DEBUG_CAPTION_MARKER = "\u200b[colorcraft-debug]"  # zero-width-space prefix, invisible in the UI, used to identify and replace Colorcraft's own gallery entries on refresh without touching anything else
 MODIFIER_COUNT = 10
 MASK_COUNT = 10
 COMBO_COUNT = 5
@@ -71,12 +73,13 @@ MODIFIER_FIELDS = [
     "chroma_contrast", "chroma_center",
     "temp_plus_tint", "temp_minus_tint", "lab_a", "lab_b", "lab_a_plus_b", "lab_a_minus_b",
     "color_shift_amount", "color_shift_mode", "color_shift_red", "color_shift_green", "color_shift_blue", "color_shift_brightness",
+    "hires",
 ]
 MODIFIER_VALUE_FIELDS = [f for f in MODIFIER_FIELDS if f != "active"]  # 'active' is implied by tag presence, not written
-LEAF_FIELDS = ["mask_axis", "mask_mode", "mask_strength", "mask_width", "mask_center", "mask_hardness", "blur", "spread", "contrast"]
-COMBO_FIELDS = ["mask_a", "mask_b", "operation", "blur", "spread", "contrast"]
+LEAF_FIELDS = ["mask_axis", "mask_mode", "mask_strength", "mask_width", "mask_center", "mask_hardness", "blur", "spread", "contrast", "normalize"]
+COMBO_FIELDS = ["mask_a", "mask_b", "operation", "blur", "spread", "contrast", "normalize"]
 
-BOOL_FIELDS = {"advanced", "smooth"}
+BOOL_FIELDS = {"advanced", "smooth", "normalize", "hires"}
 STR_FIELDS = {"color_shift_mode", "mask_axis", "mask_mode", "mask", "mask_a", "mask_b", "operation"}
 
 
@@ -106,17 +109,21 @@ def build_color_latent_forge(p, red, green, blue, brightness):
     return latent.mean(dim=(2, 3))[0]
 
 
-def decode_debug_latent(p, latent, width, height, is_5d=False):
+def decode_debug_latent(latent, width, height, is_5d=False):
     """Decodes a (possibly downscaled) latent snapshot back to a list of
     RGB PIL images, one per batch item, at the given output size -- the
-    compositing base image when debug capture happens mid-generation.
-    is_5d restores the frame dimension before decoding, mirroring the
-    squeeze/unsqueeze this callback applies to x elsewhere."""
+    compositing base image for the debug refresh button. Uses
+    shared.sd_model rather than a specific p.sd_model, since this runs
+    outside any single generation's own p object; by the time a refresh
+    is possible at all, an initial generation with the currently-loaded
+    model has always already happened, so shared.sd_model is guaranteed
+    populated. is_5d restores the frame dimension before decoding,
+    mirroring the squeeze/unsqueeze denoised_callback applies to x."""
     latent = latent.to(device=device, dtype=devices.dtype_vae)
     if is_5d:
         latent = latent.unsqueeze(2)
     with torch.no_grad():
-        img = p.sd_model.decode_first_stage(latent)
+        img = shared.sd_model.decode_first_stage(latent)
     if img.dim() == 5:
         img = img.squeeze(1)
     img = (img / 2 + 0.5).clamp(0.0, 1.0)
@@ -256,13 +263,13 @@ def on_combo_label_change(*args):
 # Mask spec construction
 # ---------------------------------------------------------------------------
 
-def build_leaf_spec(axis, mode, center, hardness, width, strength, blur, spread, contrast):
+def build_leaf_spec(axis, mode, center, hardness, width, strength, blur, spread, contrast, normalize):
     leaf = {
         "mask_axis": axis, "mask_mode": mode, "mask_center": center,
         "mask_hardness": hardness, "mask_width": width, "mask_strength": strength,
     }
-    if blur != 0 or spread != 0 or contrast != 0:
-        return {"blur": blur, "spread": spread, "contrast": contrast, "a": leaf}
+    if blur != 0 or spread != 0 or contrast != 0 or normalize:
+        return {"blur": blur, "spread": spread, "contrast": contrast, "normalize": normalize, "a": leaf}
     return leaf
 
 
@@ -278,7 +285,7 @@ def build_all_mask_specs(leaf_args, combo_args, mod_mask_selections):
         key = f"M{i+1}"
         leaf_specs[key] = build_leaf_spec(d["mask_axis"], d["mask_mode"], d["mask_center"],
                                            d["mask_hardness"], d["mask_width"], d["mask_strength"],
-                                           d["blur"], d["spread"], d["contrast"])
+                                           d["blur"], d["spread"], d["contrast"], d["normalize"])
 
     def resolve_ref(ref, combo_specs):
         if ref == "none":
@@ -300,7 +307,7 @@ def build_all_mask_specs(leaf_args, combo_args, mod_mask_selections):
             combo_specs[key] = None
             continue
         inner = {"operation": d["operation"], "a": a_spec, "b": b_spec}
-        combo_specs[key] = {"blur": d["blur"], "spread": d["spread"], "contrast": d["contrast"], "a": inner} if (d["blur"] != 0 or d["spread"] != 0 or d["contrast"] != 0) else inner
+        combo_specs[key] = {"blur": d["blur"], "spread": d["spread"], "contrast": d["contrast"], "normalize": d["normalize"], "a": inner} if (d["blur"] != 0 or d["spread"] != 0 or d["contrast"] != 0 or d["normalize"]) else inner
 
     # Direct per-modifier lookup -- multiple modifiers selecting the same
     # mask/combo is fine, nothing to conflict over anymore.
@@ -347,15 +354,15 @@ def parse_entries(raw, value_fields):
             continue
         tag, values_str = entry.split(":", 1)
         values = values_str.split(",")
-        if len(values) > len(value_fields):
-            # More values than current fields expect (e.g. a removed
-            # field) -- fields only ever get appended at the end, never
-            # inserted mid-list, so trimming the trailing extras is safe.
-            values = values[:len(value_fields)]
-        elif len(values) < len(value_fields):
+        if len(values) != len(value_fields):
+            # Fields only ever get appended at the end, never inserted
+            # mid-list, so a length mismatch just means an older/newer
+            # infotext than the current field count -- restore whatever
+            # values DO correspond to a still-existing field (zip stops
+            # at the shorter side either way) rather than losing the
+            # whole tag's data over a partial mismatch.
             print(f"[Colorcraft] WARNING: infotext entry for '{tag}' has {len(values)} values, "
-                  f"expected {len(value_fields)} -- skipping (likely a version mismatch).")
-            continue
+                  f"expected {len(value_fields)} -- restoring what matches (likely a version mismatch).")
         result[tag] = {f: _cast_field(f, v) for f, v in zip(value_fields, values)}
     return result
 
@@ -398,6 +405,11 @@ def _extract(d, section, tag, field, default=None):
 
 class Script(scripts.Script):
 
+    def __init__(self):
+        super().__init__()
+        self.debug_latent = None
+        self.debug_latent_is_5d = False
+
     def title(self):
         return "Colorcraft"
 
@@ -427,6 +439,7 @@ class Script(scripts.Script):
                         w = {}
                         with gr.Row(elem_classes=["colorcraft-top-row"]):
                             w["active"] = gr.Checkbox(value=False, label="Active", elem_classes=["colorcraft-active"], min_width=60)
+                            w["hires"] = gr.Checkbox(value=False, label="Hires. Pass", elem_classes=["colorcraft-hires"], min_width=60)
                             gr.HTML('<canvas class="colorcraft-schedule-plot"></canvas>') 
                             w["mask"] = gr.Dropdown(choices=initial_mod_mask_choices, value="none", label="Mask ➜", min_width=60, elem_classes=["colorcraft-dropdown", "colorcraft-mask-dropdown"])                               
                         modifier_active_widgets.append(w["active"])  
@@ -548,6 +561,7 @@ class Script(scripts.Script):
                                                                  elem_classes=["colorcraft-mask-width"])
                                     w["spread"] = gr.Slider(minimum=-3.0, maximum=3.0, step=0.01, value=0.0, label="Spread", min_width=60)                                     
                                 with gr.Column(elem_classes=["colorcraft-mask-plot-column"], min_width=60):                                    
+                                    w["normalize"] = gr.Checkbox(value=False, label="Normalize", elem_classes=["colorcraft-norm"], min_width=60)
                                     gr.HTML('<canvas class="colorcraft-mask-plot"></canvas>')
                                     w["contrast"] = gr.Slider(minimum=-10.0, maximum=10.0, step=0.01, value=0.0, label="Contrast", min_width=60)
 
@@ -576,6 +590,7 @@ class Script(scripts.Script):
                                     w["mask_a"] = gr.Dropdown(choices=ab_choices, value="none", label="Mask A", min_width=60, elem_classes=["colorcraft-dropdown"])
                                     w["mask_b"] = gr.Dropdown(choices=ab_choices, value="none", label="Mask B", min_width=60, elem_classes=["colorcraft-dropdown"])
                                     w["operation"] = gr.Dropdown(choices=COMBO_OP_OPTIONS, value="and", label="Operation", min_width=60, elem_classes=["colorcraft-dropdown"])
+                                    w["normalize"] = gr.Checkbox(value=False, label="Normalize", elem_classes=["colorcraft-norm"], min_width=60)
                                 with gr.Row(elem_classes=["colorcraft-row"]):
                                     w["blur"] = gr.Slider(minimum=0.0, maximum=64.0, step=0.1, value=0.0, label="Blur", min_width=60)
                                     w["spread"] = gr.Slider(minimum=-3.0, maximum=3.0, step=0.01, value=0.0, label="Spread", min_width=60)
@@ -607,8 +622,19 @@ class Script(scripts.Script):
                     gr_debug_step = gr.Slider(minimum=0, maximum=50, step=1, value=5, label="Debug Step")
                 gr_debug_axes = gr.CheckboxGroup(choices=DEBUG_AXIS_OPTIONS, value=[], label="Axis Projections", elem_classes=["colorcraft-debug-group"], show_label=False)
                 gr_debug_masks = gr.CheckboxGroup(choices=[f"M{i+1}" for i in range(MASK_COUNT)], value=[], label="Masks", elem_classes=["colorcraft-debug-group"], show_label=False)
-                gr_debug_combos = gr.CheckboxGroup(choices=[f"C{i+1}" for i in range(COMBO_COUNT)], value=[], label="Combos", elem_classes=["colorcraft-debug-group"], show_label=False)                
-                    
+                gr_debug_combos = gr.CheckboxGroup(choices=[f"C{i+1}" for i in range(COMBO_COUNT)], value=[], label="Combos", elem_classes=["colorcraft-debug-group"], show_label=False)
+                self.gr_debug_refresh = gr.Button("Refresh Debug Images", elem_classes=["colorcraft-debug-refresh"])
+                self.gr_debug_axes = gr_debug_axes
+                self.gr_debug_masks = gr_debug_masks
+                self.gr_debug_combos = gr_debug_combos
+                self.gr_debug_composite_color = gr_debug_composite_color
+                self.gr_debug_overlay_color = gr_debug_overlay_color
+                self.gr_debug_axis_style = gr_debug_axis_style
+                self.gr_debug_step = gr_debug_step
+                self.is_img2img = is_img2img
+                self.leaf_components = leaf_components
+                self.combo_components = combo_components
+
                 all_components += [gr_debug_axes, gr_debug_masks, gr_debug_combos, gr_debug_composite_color,
                                     gr_debug_overlay_color, gr_debug_axis_style, gr_debug_step]
 
@@ -630,6 +656,28 @@ class Script(scripts.Script):
         self.n_combo_fields = len(COMBO_FIELDS)
         return [gr_enabled] + modifier_components + [gr_masking_enabled] + leaf_components + combo_components + [
             gr_debug_enabled, gr_debug_axes, gr_debug_masks, gr_debug_combos, gr_debug_composite_color, gr_debug_overlay_color, gr_debug_axis_style, gr_debug_step]
+
+    def after_component(self, component, **kwargs):
+        # Captures the main gallery so the Debug Refresh button can write
+        # into it directly. Fires once per component as the whole page
+        # gets built, in an order that isn't guaranteed relative to this
+        # script's own ui() -- so this stores whichever piece arrives and
+        # only wires the button once BOTH the gallery and the button
+        # itself have been seen, regardless of which came first.
+        tabname = "img2img" if self.is_img2img else "txt2img"
+        if kwargs.get("elem_id") == f"{tabname}_gallery":
+            self.gr_gallery = component
+
+        if getattr(self, "gr_gallery", None) is not None and getattr(self, "gr_debug_refresh", None) is not None \
+                and not getattr(self, "_debug_refresh_wired", False):
+            self.gr_debug_refresh.click(
+                fn=self.on_debug_refresh,
+                inputs=[self.gr_gallery, self.gr_debug_axes, self.gr_debug_masks, self.gr_debug_combos,
+                        self.gr_debug_composite_color, self.gr_debug_overlay_color, self.gr_debug_axis_style]
+                       + self.leaf_components + self.combo_components,
+                outputs=[self.gr_gallery],
+            )
+            self._debug_refresh_wired = True
 
     # -----------------------------------------------------------------
     # Runtime
@@ -678,6 +726,7 @@ class Script(scripts.Script):
         mod_entries = []
         self.current_step = 0
         self.actual_steps = 0
+        self.is_hires_pass = False
         self.modifier_data = []
         needs_neutral_anchor = False
 
@@ -704,6 +753,7 @@ class Script(scripts.Script):
                 "params": d,
                 "color_anchor": None,  # built below, only if color_shift_amount != 0
                 "mask_spec": modifier_mask_map.get(tag),
+                "hires": d["hires"],
             })
 
         leaf_entries = [(f"M{i+1}", dict(zip(LEAF_FIELDS, leaf_args[i]))) for i in range(MASK_COUNT) if leaf_active[i]]
@@ -729,26 +779,9 @@ class Script(scripts.Script):
 
         self.dev = resolve_dev({}, self.family) if self.cur_basis is not None else None
 
-        # Debug panel state -- leaf_specs/combo_specs are already built
-        # for every tab regardless of activeness, so this just stores
-        # them for the callback to look up a selected tag by name.
-        self.debug_axes = list(debug_axes) if debug_enabled else []
-        self.debug_masks = list(debug_masks) if debug_enabled else []
-        self.debug_combos = list(debug_combos) if debug_enabled else []
-        self.debug_composite_color = debug_composite_color
-        self.debug_overlay_color = debug_overlay_color
-        self.debug_axis_style = debug_axis_style
         self.debug_step = debug_step
-        self.leaf_specs = leaf_specs
-        self.combo_specs = combo_specs
-        self.debug_images = {}
-        self.debug_curve_info = {}
-        self.debug_hue_chroma_frac = None
-        self.debug_composite_base_latent = None
-        self.debug_composite_base_latent_is_5d = False
-        if (self.debug_axes or self.debug_masks or self.debug_combos) and self.cur_basis is None:
-            print("[Colorcraft] WARNING: Debug panel selections present but no basis matched this "
-                  "model -- nothing will be captured this run.")
+        self.debug_latent = None
+        self.debug_latent_is_5d = False
 
         # Anchors built here, not lazily inside denoised_callback -- `p`
         # (needed for p.sd_model) is a real argument here but NOT reliably
@@ -768,65 +801,131 @@ class Script(scripts.Script):
     def before_process_batch(self, p, *args, **kwargs):
         self.current_step = 0
         self.actual_steps = 0
+        self.is_hires_pass = False
+
+    def before_hr(self, p, *args):
+        self.is_hires_pass = True
+        self.current_step = 0
+        self.actual_steps = 0
 
     def postprocess(self, p, processed, *args):
         if hasattr(self, "callbacks_added"):
             self.remove_callbacks()
             delattr(self, "callbacks_added")
 
-        # Known v1 limitation: debug_images is reset at the start of every
-        # process() call, but postprocess() only runs once for the whole
-        # job -- with n_iter > 1, only the LAST iteration's captures
-        # survive to be appended here, not every iteration's.
-        debug_images = getattr(self, "debug_images", None)
-        if debug_images:
-            base_images = list(processed.images)  # snapshot BEFORE appending anything below
-            snapshot_latent = getattr(self, "debug_composite_base_latent", None)
-            if snapshot_latent is not None:
-                # Debug captures the pre-edit state at the selected step
-                # (see denoised_callback) -- processed.images only ever
-                # reflects the true post-edit final output, which is never
-                # what compositing should show, even at the final step.
-                base_images = decode_debug_latent(p, snapshot_latent, p.width, p.height,
-                                                   is_5d=getattr(self, "debug_composite_base_latent_is_5d", False))
-            total = sum(t.shape[0] for t in debug_images.values())
-            if total > 20:
-                print(f"[Colorcraft] WARNING: Debug panel producing {total} extra images this run "
-                      f"(batch size x selected axes/masks/combos) -- consider narrowing the selection.")
-            composite_color = DEBUG_COMPOSITE_COLORS.get(getattr(self, "debug_composite_color", "none"))
-            overlay_color = getattr(self, "debug_overlay_color", "red")
-            axis_style = getattr(self, "debug_axis_style", "greyscale")
-            for label, tensor in debug_images.items():
-                is_projection = label.startswith("axis:")
-                curve_infos = self.debug_curve_info.get(label)
-                tag = label.split(":", 1)[1] if ":" in label else None
-                if tag in ("hue", "hue (weighted)"):
-                    chroma_frac = self.debug_hue_chroma_frac if tag == "hue (weighted)" else None
-                    imgs = render_hue_images(tensor, p.width, p.height, label, overlay_color, curve_infos, chroma_frac)
-                    processed.images.extend(imgs)
+    def remove_callbacks(self):
+        remove_callbacks_for_function(self.denoiser_callback)
+        remove_callbacks_for_function(self.denoised_callback)
+
+    def build_debug_gallery_images(self, debug_axes, debug_masks, debug_combos,
+                                    debug_composite_color, debug_overlay_color, debug_axis_style,
+                                    leaf_specs, combo_specs):
+        """Computes projections/mask tensors from the cached self.debug_latent
+        and renders them into captioned (image, caption) tuples, tagged with
+        DEBUG_CAPTION_MARKER so a later refresh can find and replace only
+        its own prior output. leaf_specs/combo_specs are passed in fresh by
+        the caller (rebuilt from live widget values), not read from self --
+        operates entirely on cached latent data plus current mask/combo
+        definitions, no sampling, no callback dependency, safe to call
+        anytime after at least one generation."""
+        if self.debug_latent is None:
+            print("[Colorcraft] WARNING: Debug Refresh pressed but no debug latent has been "
+                  "captured yet -- generate at least once first.")
+            return []
+        if self.cur_basis is None:
+            print("[Colorcraft] WARNING: Debug panel selections present but no basis matched "
+                  "this model -- nothing to show.")
+            return []
+
+        x = self.debug_latent
+        # cur_basis lives on GPU (built once at generation time); x is
+        # stored on CPU to avoid holding VRAM between generation and a
+        # possibly much-later refresh click -- so the projection math
+        # needs a CPU copy of the basis to match.
+        cpu_basis = {k: v.cpu() for k, v in self.cur_basis.items()}
+        p_height = x.shape[2] * VAE_DOWNSCALE_FACTOR
+        p_width = x.shape[3] * VAE_DOWNSCALE_FACTOR
+        composite_color = DEBUG_COMPOSITE_COLORS.get(debug_composite_color)
+        base_images = None
+        if composite_color is not None:
+            downscaled = downscale_latent_for_storage(x, max_dim=64)
+            base_images = decode_debug_latent(downscaled, p_width, p_height, is_5d=self.debug_latent_is_5d)
+
+        results = []
+        total = 0
+
+        def emit(label, imgs):
+            nonlocal total
+            total += len(imgs)
+            for img in imgs:
+                results.append((img, f"{DEBUG_CAPTION_MARKER} {label}"))
+
+        for axis in debug_axes:
+            if axis in ("hue", "hue (weighted)"):
+                axis1, axis2 = chroma_axes(cpu_basis, self.dev["chroma_plane"])
+                proj = compute_hue_projection(x, axis1, axis2, self.dev.get("hue_bias", 0.0))
+                chroma_frac = None
+                if axis == "hue (weighted)":
+                    sat_proj = compute_saturation_projection(x, axis1, axis2, self.dev["max_chroma"])
+                    chroma_frac = ((sat_proj + 1.0) / 2.0).clamp(0.0, 1.0)
+                imgs = render_hue_images(proj, p_width, p_height, f"axis:{axis}", debug_overlay_color, None, chroma_frac)
+                emit(f"axis:{axis}", imgs)
+                continue
+            proj = compute_axis_projection(axis, x, cpu_basis, self.dev)
+            if proj is None:
+                continue
+            imgs = debug_tensor_to_images(proj, p_width, p_height, True, False, f"axis:{axis}",
+                                           debug_overlay_color, None, debug_axis_style)
+            emit(f"axis:{axis}", imgs)
+
+        for kind, tags, spec_map in (("mask", debug_masks, leaf_specs), ("combo", debug_combos, combo_specs)):
+            for tag in tags:
+                spec = spec_map.get(tag)
+                if spec is None:
+                    print(f"[Colorcraft] WARNING: Debug {kind} {tag} has an unresolved reference -- skipping.")
                     continue
-                if label.startswith("mask:"):
-                    spec = self.leaf_specs.get(tag)
-                elif label.startswith("combo:"):
-                    spec = self.combo_specs.get(tag)
-                else:
-                    spec = None
+                label = f"{kind}:{tag}"
+                mask_tensor = resolve_mask_tensor(spec, x, cpu_basis, self.dev, VAE_DOWNSCALE_FACTOR)
+                curve_infos = build_curve_infos(spec, x, cpu_basis, self.dev)
                 # Checked directly against every leaf in the spec (not just
                 # curve_infos, which excludes hue-axis leaves) -- a hue-axis
                 # split-mode leaf can still legitimately go negative even
                 # though it doesn't get a curve drawn.
-                is_signed = spec is not None and any(leaf.get("mask_mode") == "split" for leaf in collect_leaves(spec))
-                if not is_projection and composite_color is not None:
-                    imgs = composite_mask_images(tensor, composite_color, base_images, label, overlay_color, curve_infos)
+                is_signed = any(leaf.get("mask_mode") == "split" for leaf in collect_leaves(spec))
+                if composite_color is not None and base_images is not None:
+                    imgs = composite_mask_images(mask_tensor, composite_color, base_images, label, debug_overlay_color, curve_infos)
                 else:
-                    imgs = debug_tensor_to_images(tensor, p.width, p.height, is_projection, is_signed, label,
-                                                   overlay_color, curve_infos, axis_style)
-                processed.images.extend(imgs)
-            self.debug_images = {}
+                    imgs = debug_tensor_to_images(mask_tensor, p_width, p_height, False, is_signed, label,
+                                                   debug_overlay_color, curve_infos, debug_axis_style)
+                emit(label, imgs)
 
-    def remove_callbacks(self):
-        remove_callbacks_for_function(self.denoiser_callback)
-        remove_callbacks_for_function(self.denoised_callback)
+        if total > 20:
+            print(f"[Colorcraft] WARNING: Debug panel producing {total} images this refresh "
+                  f"(batch size x selected axes/masks/combos) -- consider narrowing the selection.")
+        return results
+
+    def on_debug_refresh(self, gallery_value, debug_axes, debug_masks, debug_combos,
+                          debug_composite_color, debug_overlay_color, debug_axis_style,
+                          *leaf_combo_args):
+        nl, nc = self.n_leaf_fields, self.n_combo_fields
+        leaf_args_flat = leaf_combo_args[:nl * MASK_COUNT]
+        combo_args_flat = leaf_combo_args[nl * MASK_COUNT:nl * MASK_COUNT + nc * COMBO_COUNT]
+        leaf_args = [tuple(leaf_args_flat[i * nl:(i + 1) * nl]) for i in range(MASK_COUNT)]
+        combo_args = [tuple(combo_args_flat[i * nc:(i + 1) * nc]) for i in range(COMBO_COUNT)]
+        # mod_mask_selections only affects the modifier_mask_map return
+        # value, which isn't needed here -- a dummy is fine, it has no
+        # effect on the leaf_specs/combo_specs this actually wants.
+        _, leaf_specs, combo_specs = build_all_mask_specs(leaf_args, combo_args, ["none"] * MODIFIER_COUNT)
+
+        new_images = self.build_debug_gallery_images(debug_axes, debug_masks, debug_combos,
+                                                       debug_composite_color, debug_overlay_color, debug_axis_style,
+                                                       leaf_specs, combo_specs)
+        kept = []
+        for item in (gallery_value or []):
+            caption = item[1] if isinstance(item, (list, tuple)) and len(item) > 1 else None
+            if not (isinstance(caption, str) and caption.startswith(DEBUG_CAPTION_MARKER)):
+                kept.append(tuple(item) if isinstance(item, (list, tuple)) else item)
+        return gr.update(value=kept + new_images)
 
     def denoiser_callback(self, params):
         step = max(params.sampling_step, params.denoiser.step)
@@ -848,45 +947,31 @@ class Script(scripts.Script):
         # what apply_mask_gate itself evaluates against (each layer's own
         # pre-edit state). Always captures a fresh snapshot, even at the
         # final step, since post-edit processed.images doesn't match the
-        # pre-edit state debug shows.
+        # pre-edit state debug shows. Only the latent itself is stored
+        # here -- axis/mask/combo resolution is deferred to the refresh
+        # button, so it can reflect selections made after generation too.
+        # Captured regardless of whether the Debug accordion is currently
+        # open -- lets the user enable it after the fact without an extra
+        # generation, as long as Colorcraft itself ran this step.
         if self.current_step == self.debug_step and self.cur_basis is not None:
-            if self.debug_composite_color != "none":
-                self.debug_composite_base_latent = downscale_latent_for_storage(x, max_dim=64)
-                self.debug_composite_base_latent_is_5d = is_5d
-            for axis in self.debug_axes:
-                if axis in ("hue", "hue (weighted)"):
-                    axis1, axis2 = chroma_axes(self.cur_basis, self.dev["chroma_plane"])
-                    proj = compute_hue_projection(x, axis1, axis2, self.dev.get("hue_bias", 0.0))
-                    self.debug_images[f"axis:{axis}"] = proj.detach().cpu()
-                    if axis == "hue (weighted)":
-                        sat_proj = compute_saturation_projection(x, axis1, axis2, self.dev["max_chroma"])
-                        self.debug_hue_chroma_frac = ((sat_proj + 1.0) / 2.0).clamp(0.0, 1.0).detach().cpu()
-                    continue
-                proj = compute_axis_projection(axis, x, self.cur_basis, self.dev)
-                if proj is not None:
-                    self.debug_images[f"axis:{axis}"] = proj.detach().cpu()
-            for tag in self.debug_masks:
-                spec = self.leaf_specs.get(tag)
-                if spec is not None:
-                    self.debug_images[f"mask:{tag}"] = resolve_mask_tensor(spec, x, self.cur_basis, self.dev, VAE_DOWNSCALE_FACTOR).detach().cpu()
-                    curve_infos = build_curve_infos(spec, x, self.cur_basis, self.dev)
-                    if curve_infos:
-                        self.debug_curve_info[f"mask:{tag}"] = [dict(ci, projection=ci["projection"].detach().cpu()) for ci in curve_infos]
-            for tag in self.debug_combos:
-                spec = self.combo_specs.get(tag)
-                if spec is None:
-                    print(f"[Colorcraft] WARNING: Debug combo {tag} has an unresolved Mask A/B reference -- skipping capture.")
-                    continue
-                self.debug_images[f"combo:{tag}"] = resolve_mask_tensor(spec, x, self.cur_basis, self.dev, VAE_DOWNSCALE_FACTOR).detach().cpu()
-                curve_infos = build_curve_infos(spec, x, self.cur_basis, self.dev)
-                if curve_infos:
-                    self.debug_curve_info[f"combo:{tag}"] = [dict(ci, projection=ci["projection"].detach().cpu()) for ci in curve_infos]
+            captured = x.detach().cpu()
+            # A resolution change between captures (e.g. normal pass ->
+            # hires pass, which runs at a different spatial size) can't be
+            # concatenated -- start fresh instead of crashing. Same-shape
+            # captures (e.g. across n_iter iterations of the same pass)
+            # still accumulate as before.
+            if self.debug_latent is not None and self.debug_latent.shape[1:] != captured.shape[1:]:
+                self.debug_latent = None
+            self.debug_latent = captured if self.debug_latent is None else torch.cat([self.debug_latent, captured], dim=0)
+            self.debug_latent_is_5d = is_5d
 
         for layer in self.modifier_data:
+            if layer["hires"] != self.is_hires_pass:
+                continue
             if layer["schedule"] is None:
                 layer["schedule"] = make_schedule(self.actual_steps, **layer["schedule_params"])
             s = layer["schedule"][self.current_step]
-            # print(f"[Colorcraft] {layer['name']} -- step {self.current_step}/{self.actual_steps - 1} -- multiplier: {s:.4f}")
+            print(f"[Colorcraft] {layer['name']} -- step {self.current_step}/{self.actual_steps - 1} -- multiplier: {s:.4f}")
             if s == 0:
                 continue
 

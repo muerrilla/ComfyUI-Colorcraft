@@ -904,7 +904,7 @@ const NODE_CONFIGS = {
         hasSchedule: false,
     },
     ColorcraftMaskBlur: {
-        boxes: [["radius", "spread", "contrast"]],
+        boxes: [["radius", "spread", "contrast", "normalize"]],
         spacers: [
             { before: "radius" },
         ],

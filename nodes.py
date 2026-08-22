@@ -91,7 +91,7 @@ class ColorcraftBasic:
                 "smooth": ("BOOLEAN", {"default": True}),
                 # UI-only -- purely for the JS schedule plot tick marks; never read
                 # server-side, since the sampler already knows the real step count.
-                "plot_steps": ("INT", {"default": 8, "min": 2, "max": 50, "step": 1}),
+                "plot_steps": ("INT", {"default": 8, "min": 2, "max": 20, "step": 1}),
 
                 # -- contrast --------------------------------------------------------
                 "contrast": ("FLOAT", {"default": 0.0, "min": -10.0, "max": 10.0, "step": 0.01}),
@@ -148,7 +148,7 @@ class ColorcraftAdvanced:
                 "end_off": ("FLOAT", {"default": 0.0, "min": -10.0, "max": 10.0, "step": 0.01}),
                 "smooth": ("BOOLEAN", {"default": True}),
                 # UI-only -- purely for the JS schedule plot tick marks;
-                "plot_steps": ("INT", {"default": 8, "min": 2, "max": 50, "step": 1}),
+                "plot_steps": ("INT", {"default": 8, "min": 2, "max": 20, "step": 1}),
 
                 # -- luma group ------------------------------------------------------
                 "exposure": ("FLOAT", {"default": 0.0, "min": -10.0, "max": 10.0, "step": 0.01}),
@@ -240,7 +240,7 @@ class ColorcraftSchedule:
                 "end_off": ("FLOAT", {"default": 0.0, "min": -10.0, "max": 10.0, "step": 0.01}),
                 "smooth": ("BOOLEAN", {"default": True}),
                 # UI-only -- purely for the JS schedule plot tick marks;
-                "plot_steps": ("INT", {"default": 8, "min": 2, "max": 50, "step": 1}),
+                "plot_steps": ("INT", {"default": 8, "min": 2, "max": 20, "step": 1}),
             },
         }
 
@@ -441,8 +441,9 @@ class ColorcraftMaskBlur:
     (not folded into ColorcraftMasking) so it can wrap any point in a
     mask chain, including a Combine result. Radius is in decoded-image
     pixels, converted internally by VAE_DOWNSCALE_FACTOR. `spread` — see
-    apply_mask_spread. `contrast` — see apply_mask_contrast; meant to run
-    AFTER spread (blur -> spread -> contrast), which resolve_mask_tensor's
+    apply_mask_spread. `contrast` — see apply_mask_contrast. `normalize` —
+    see apply_mask_normalize; runs between spread and contrast
+    (blur -> spread -> normalize -> contrast), which resolve_mask_tensor's
     blur-node handling already does regardless of the order these widgets
     are declared in here."""
     CATEGORY = "Muerrilla/Colorcraft"
@@ -455,13 +456,14 @@ class ColorcraftMaskBlur:
             "required": {
                 "mask": ("COLORCRAFT_MASK",),
                 "radius": ("FLOAT", {"default": 0.0, "min": 0.0, "max": 160.0, "step": 0.1}),
-                "spread": ("FLOAT", {"default": 0.0, "min": -10.0, "max": 10.0, "step": 0.01}),
-                "contrast": ("FLOAT", {"default": 0.0, "min": -10.0, "max": 10.0, "step": 0.01}),
+                "spread": ("FLOAT", {"default": 0.0, "min": -3.0, "max": 3.0, "step": 0.01}),
+                "contrast": ("FLOAT", {"default": 0.0, "min": -3.0, "max": 3.0, "step": 0.01}),
+                "normalize": ("BOOLEAN", {"default": False}),
             },
         }
 
-    def make(self, mask, radius, spread, contrast):
-        return ({"blur": radius, "spread": spread, "contrast": contrast, "a": mask},)
+    def make(self, mask, radius, spread, contrast, normalize):
+        return ({"blur": radius, "spread": spread, "contrast": contrast, "normalize": normalize, "a": mask},)
 
 
 # ---------------------------------------------------------------------------
@@ -871,7 +873,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "ColorcraftShift": "Colorcraft Shift",
     "ColorcraftMasking": "Colorcraft Masking",
     "ColorcraftMaskCombine": "Colorcraft Combine Masks",
-    "ColorcraftMaskBlur": "Colorcraft Refine Mask",
+    "ColorcraftMaskBlur": "Refine Mask",
     "ColorcraftSampler": "Colorcraft Sampler",
     "ColorcraftDebug": "Colorcraft Debug",
 }
