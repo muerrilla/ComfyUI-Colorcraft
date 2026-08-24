@@ -19,7 +19,7 @@ jobs:
           REPO: ${{ github.repository }}
           GIST_ID: ${{ secrets.TRAFFIC_GIST_ID }}
         run: |
-          TODAY=$(date -u +%Y-%m-%d)
+          TODAY=$(date -u -d "yesterday" +%Y-%m-%d)
           TODAY_TS="${TODAY}T00:00:00Z"
 
           curl -s \
