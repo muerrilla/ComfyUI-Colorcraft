@@ -1,3 +1,16 @@
+let colorcraftCachedIsDark = null;
+function colorcraftIsDarkMode() {
+    if (colorcraftCachedIsDark === null) {
+        colorcraftCachedIsDark = document.body.classList.contains("dark");
+    }
+    return colorcraftCachedIsDark;
+}
+
+function colorcraftPlotStrokeColor(alpha) {
+    const rgb = colorcraftIsDarkMode() ? "255,255,255" : "0,0,0";
+    return `rgba(${rgb},${alpha})`;
+}
+
 (function () {
     const CHECKBOX_SELECTOR = '.colorcraft-tab-group .colorcraft-active input[type="checkbox"]';
     const TARGETED_SELECTOR = '.colorcraft-tab-group .colorcraft-targeted input[type="checkbox"]';
@@ -154,7 +167,7 @@
         const toX = (t) => x0 + t * plotW;
         const toY = (v) => plotY + plotH * (1 - (v + 1) / 2);
         const { arr, mid } = makeScheduleArray(SCHEDULE_PLOT_RESOLUTION, p);
-        const stroke = "rgba(255,255,255,0.55)";
+        const stroke = colorcraftPlotStrokeColor(0.55);
         const stepDivisor = Math.max(1, Math.round(steps) - 1);
         ctx.save();
         ctx.strokeStyle = stroke;
@@ -358,6 +371,11 @@
                 const m = mode === "protect range" ? 1 - g : g;
                 return 1 + strength * (m - 1);
             }
+            case "linear": {
+                const wSafe = (w < 0 ? -1 : 1) * Math.max(Math.abs(w), 1e-8);
+                const m = Math.max(0, Math.min(1, (diff + wSafe / 2) / wSafe));
+                return 1 + strength * (m - 1);
+            }
             default: return 1;
         }
     }
@@ -419,7 +437,7 @@
         const toX = (v) => x0 + ((v - xmin) / (xmax - xmin)) * plotW;
         const toY = (v) => plotY + plotH * (1 - (v + 1.1) / 2.2);
 
-        const stroke = "rgba(255,255,255,0.55)";
+        const stroke = colorcraftPlotStrokeColor(0.55);
 
         if (p.axis === "exposure") {
             const alpha = 0.75;
@@ -486,7 +504,7 @@
             }
             ctx.lineTo(toX(xmax), toY(0));
             ctx.closePath();
-            ctx.fillStyle = "rgba(255,255,255,0.06)";
+            ctx.fillStyle = colorcraftPlotStrokeColor(0.06);
             ctx.fill();
             ctx.restore();
         }
