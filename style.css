@@ -31,7 +31,10 @@
     color: var(--body-text-color-subdued) !important;
 }
 .colorcraft-tab-group .tab-nav button.colorcraft-tab-active {
-    color: white !important;
+    color: var(--neutral-700) !important;
+}
+.dark .colorcraft-tab-group .tab-nav button.colorcraft-tab-active {
+    color: var(--neutral-50) !important;
 }
 .colorcraft-mod-tab-group .tab-nav button {
     font-size: 22px !important;
@@ -362,28 +365,27 @@
     transition: none;
 }
 
-.colorcraft-dropdown.colorcraft-changed > div > span {
-    font-weight: bolder;
-    color: white;
-}
-.colorcraft-dropdown.colorcraft-changed input {
-    font-weight: bolder;
-    color: white;
-}
+.colorcraft-dropdown.colorcraft-changed > div > span,
+.colorcraft-dropdown.colorcraft-changed input,
 #script_txt2img_colorcraft_accordion .gradio-slider.colorcraft-changed span,
-#script_img2img_colorcraft_accordion .gradio-slider.colorcraft-changed span {
-    font-weight: bolder;
-    color: white;
-}
+#script_img2img_colorcraft_accordion .gradio-slider.colorcraft-changed span,
 #script_txt2img_colorcraft_accordion .gradio-slider.colorcraft-changed input,
-#script_img2img_colorcraft_accordion .gradio-slider.colorcraft-changed input {
-    font-weight: bolder;
-    color: white;
-}
+#script_img2img_colorcraft_accordion .gradio-slider.colorcraft-changed input,
 #script_txt2img_colorcraft_accordion .gradio-checkbox.colorcraft-changed label span,
 #script_img2img_colorcraft_accordion .gradio-checkbox.colorcraft-changed label span {
     font-weight: bolder;
-    color: white;
+    color: var(--neutral-700);
+}
+.dark .colorcraft-dropdown.colorcraft-changed > div > span,
+.dark .colorcraft-dropdown.colorcraft-changed input,
+.dark #script_txt2img_colorcraft_accordion .gradio-slider.colorcraft-changed span,
+.dark #script_img2img_colorcraft_accordion .gradio-slider.colorcraft-changed span,
+.dark #script_txt2img_colorcraft_accordion .gradio-slider.colorcraft-changed input,
+.dark #script_img2img_colorcraft_accordion .gradio-slider.colorcraft-changed input,
+.dark #script_txt2img_colorcraft_accordion .gradio-checkbox.colorcraft-changed label span,
+.dark #script_img2img_colorcraft_accordion .gradio-checkbox.colorcraft-changed label span {
+    font-weight: bolder;
+    color: var(--neutral-50);
 }
 
 button.secondary.colorcraft-reset {
@@ -410,4 +412,3 @@ button.secondary.colorcraft-reset:hover {
 #txt2img_gallery div.caption-label, #img2img_gallery div.caption-label {
     display: none;
 }
-
