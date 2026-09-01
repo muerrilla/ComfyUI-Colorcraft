@@ -384,8 +384,15 @@
 .dark #script_img2img_colorcraft_accordion .gradio-slider.colorcraft-changed input,
 .dark #script_txt2img_colorcraft_accordion .gradio-checkbox.colorcraft-changed label span,
 .dark #script_img2img_colorcraft_accordion .gradio-checkbox.colorcraft-changed label span {
-    font-weight: bolder;
     color: var(--neutral-50);
+}
+
+.colorcraft-debug-group label.selected span{
+    font-weight: bolder;
+    color: var(--neutral-700) !important;
+}
+.dark .colorcraft-debug-group label.selected span{
+    color: var(--neutral-50) !important;
 }
 
 button.secondary.colorcraft-reset {
